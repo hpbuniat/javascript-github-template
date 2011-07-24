@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="js-project" default="build" basedir=".">
+  <property file="build.properties"/>
+  <target name="build" depends="clean,lint,parallelTasks"/>
+
+  <target name="clean">
+      <!-- Clean up -->
+      <delete dir="${basedir}/build"/>
+
+      <!-- Create build directories -->
+      <mkdir dir="${basedir}/build/logs"/>
+  </target>
+
+  <!-- Run lint for php-files -->
+  <target name="lint">
+    <apply executable="php" failonerror="true" logerror="on">
+      <arg line="-ln"/>
+      <fileset dir="${basedir}">
+        <include name="**/*.php"/>
+      </fileset>
+    </apply>
+  </target>
+  
+ <!-- Run the pdepend, phpmd, phpcpd, phpcs, phpdoc and phploc tasks
+      in parallel using a maximum of 2 threads. -->
+ <target name="parallelTasks" depends="lint">
+    <parallel threadCount="2">
+        <antcall target="phpcpd"/>
+        <antcall target="phpcs"/>
+        <antcall target="jslint"/>
+    </parallel>
+ </target>
+
+ <!-- Generate pmd-cpd.xml -->
+ <target name="phpcpd">
+  <exec executable="phpcpd">
+   <arg line="--log-pmd ${basedir}/build/logs/pmd-cpd.xml --exclude ${basedir}/test --min-lines 3 --min-tokens 60 --suffixes php,phtml,tpl,js,css ${basedir}" />
+  </exec>
+ </target>
+
+ <!-- Generate checkstyle.xml -->
+ <target name="phpcs">
+    <exec executable="phpcs" output="${basedir}/build/logs/checkstyle.xml" error="/tmp/checkstyle.error.log">
+      <arg line="--report=checkstyle --extensions=php --standard=Squiz ${basedir}"/>
+    </exec>
+ </target>
+ 
+ <!-- Generate jslint.xml -->
+ <target name="jslint" description="Run the JSLint and JSHint tools on JS files">
+  <fileset dir="${basedir}" id="jsfiles.raw">
+    <include name="**/*.js" />
+    <exclude name="**/*.min.js" />
+    <exclude name="**/test/*/*.js" />
+    <exclude name="**/min/*/*.js" />
+    <exclude name="**/build/*.js" />
+    <exclude name="**/release/*.js" />
+  </fileset>
+  <pathconvert pathsep=" " property="jsfiles.clean" refid="jsfiles.raw" />
+  <exec executable="java" output="build/logs/jslint.xml">
+    <arg line="-jar jslint4java-1.4.7.jar --report xml ${jsfiles.clean}" />
+  </exec>
+  <exec executable="jshint" output="build/logs/jslint-hint.xml">
+    <arg line="${jsfiles.clean} --jslint-reporter" />
+  </exec>
+ </target>
+ 
+</project>
